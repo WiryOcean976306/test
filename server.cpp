@@ -1,5 +1,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
+#include "nlohmann/json.hpp" // nlohmann/json.hpp (use project-local stub)
 
 #include <iostream>
 #include <fstream>
@@ -13,6 +14,7 @@
 #include <iomanip>
 
 using namespace std;
+using json = nlohmann::json;
 
 string url_decode(const string &s) {
     string out;
@@ -32,7 +34,9 @@ string url_decode(const string &s) {
 string now_timestamp() {
     auto now = chrono::system_clock::now();
     auto t = chrono::system_clock::to_time_t(now);
-    std::tm tm = *std::localtime(&t);
+    std::tm tm = *std::gmtime(&t);
+    time_t cst_time = t - (6 * 3600); 
+    tm = *std::gmtime(&cst_time);
     char buf[64];
     std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm);
     return string(buf);
@@ -41,7 +45,9 @@ string now_timestamp() {
 string generate_order_id() {
     auto now = chrono::system_clock::now();
     auto t = chrono::system_clock::to_time_t(now);
-    std::tm tm = *std::localtime(&t);
+    std::tm tm = *std::gmtime(&t);
+    time_t cst_time = t - (6 * 3600); 
+    tm = *std::gmtime(&cst_time);
     char buf[64];
     std::strftime(buf, sizeof(buf), "ORD%Y%m%d%H%M%S", &tm);
     int r = rand() % 900 + 100;
