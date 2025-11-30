@@ -1,6 +1,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
-#include "nlohmann/json.hpp" // nlohmann/json.hpp (use project-local stub)
+#include "nlohmann/json.hpp" // nlohmann/json.hpp
 
 #include <iostream>
 #include <fstream>
@@ -137,7 +137,6 @@ void handle_client(int client_fd) {
     }
 
     if (method == "POST" && (path == "/order" || path == "/submit")) {
-        // Expect JSON body (the PageTest.html sends application/json)
         string order_json = body;
         // Save to orders.txt with meta
         srand((unsigned)time(nullptr));

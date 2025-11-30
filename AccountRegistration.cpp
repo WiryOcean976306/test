@@ -104,5 +104,8 @@ public:
 
     string getEmail() const { return email; }
     string getAddress() const { return address; }
+
+    string getCardHidden() const { return creditCard.cardNumber.substr(12); }
+
     bool hasCreditCard() const { return !creditCard.empty(); }
 };
