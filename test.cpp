@@ -12,8 +12,16 @@ std::string FixString(const std::string str)
     return result;
 }
 
+std::string PrettyParse(const std::string jSon,const std::string str) 
+{
+    std::string ToParse = jSon;
+    json parsed = json::parse(ToParse);
+    std::string result = parsed[str];
+    result.erase(std::remove(result.begin(), result.end(), '"'), result.end());
+    return result;
+}
+
 int main() {
-    // Test parsing a JSON string
     std::string json_string = R"(
     {
         "name": "John",
@@ -24,11 +32,9 @@ int main() {
     )";
 
     try {
-        // Parse the JSON string
         json parsed = json::parse(json_string);
 
-        // Access and print parsed values
-        std::cout << "Name: " << FixString(parsed["name"]) << std::endl;
+        std::cout << "Name: " << PrettyParse(json_string, "name") << std::endl;
         std::cout << "Age: " << parsed["age"] << std::endl;
         std::cout << "City: " << FixString(parsed["city"]) << std::endl;
 
