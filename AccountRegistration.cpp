@@ -1,111 +1,64 @@
+#include "AccountRegistration.h"
+#include "nlohmann/json.hpp"
+#include <iostream>
+#include <fstream>
 #include <string>
-#include <regex>
-#include <stdexcept>
-#include <ctime>
 #include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <algorithm>
 
 using namespace std;
+using json = nlohmann::json;
 
+string PrettyParse(const string jSon, const string str) {
+    string ToParse = jSon;
+    json parsed = json::parse(ToParse);
+    string result = parsed[str];
+    result.erase(remove(result.begin(), result.end(), '"'), result.end());
+    return result;
+}
 
-struct CardInfo {
-    string cardNumber;
-    string expiryDate;
-    string cvv;
+string now_timestamp() {
+    auto now = chrono::system_clock::now();
+    auto t = chrono::system_clock::to_time_t(now);
+    tm tm = *gmtime(&t);
+    time_t cst_time = t - (6 * 3600); 
+    tm = *gmtime(&cst_time);
+    char buf[64];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm);
+    return string(buf);
+}
 
-    bool empty() const {
-        return cardNumber.empty() && expiryDate.empty() && cvv.empty();
+void processAccount(const string& json_str) {
+    // Extract account info using PrettyParse
+    string firstName, lastName, email, password, phone;
+    try {
+        firstName = PrettyParse(json_str, "firstName");
+        lastName = PrettyParse(json_str, "lastName");
+        email = PrettyParse(json_str, "email");
+        password = PrettyParse(json_str, "password");
+        phone = PrettyParse(json_str, "phone");
+    } catch (...) {
+        // If parsing fails, continue with empty strings
+        cerr << "Error parsing JSON for account registration" << endl;
     }
-};
-
-
-class AccountRegistration {
-private:
-    string email;
-    string password;
-    string address;
-    CardInfo creditCard;
-
-    bool validateEmail(const string& email) const {
-        regex emailPattern(R"(^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$)");
-        return regex_match(email, emailPattern);
-    }
-
-    bool validatePassword(const string& password) const {
-        return password.length() >= 8;
-    }
-
-    bool isCardExpired(const string& expiryDate) const {
-        // expiryDate format: MM/YY
-        if (expiryDate.length() != 5 || expiryDate[2] != '/') {
-            return true; // Invalid format considered expired
+    
+    // If account info was found, save to AllAccounts.txt
+    if (!firstName.empty() || !lastName.empty() || !email.empty()) {
+        ofstream ofs_accounts("AllAccounts.txt", ios::app);
+        ofs_accounts << "------------------------------\n";
+        ofs_accounts << "First Name: " << firstName << "\n";
+        ofs_accounts << "Last Name: " << lastName << "\n";
+        ofs_accounts << "Email: " << email << "\n";
+        ofs_accounts << "Password: " << password << "\n";
+        if (!phone.empty()) {
+            ofs_accounts << "Phone: " << phone << "\n";
         }
-        try {
-            int month = stoi(expiryDate.substr(0, 2));
-            int year = stoi(expiryDate.substr(3, 2));
-            
-            // Get current date
-            auto now = chrono::system_clock::now();
-            time_t t = chrono::system_clock::to_time_t(now);
-            struct tm* timeinfo = localtime(&t);
-            
-            int currentYear = timeinfo->tm_year % 100; // YY format
-            int currentMonth = timeinfo->tm_mon + 1;   // tm_mon is 0-11
-            
-            // Card expires at end of month, so compare: if current > expiry, it's expired
-            if (year > currentYear) return false;  // Future year
-            if (year < currentYear) return true;   // Past year
-            return month < currentMonth;           // Same year, compare months
-        } catch (...) {
-            return true; // Invalid date format
-        }
+        ofs_accounts << "Date: " << now_timestamp() << "\n";
+        ofs_accounts << "------------------------------\n\n";
+        ofs_accounts.close();
+        
+        cout << "Account registered: " << firstName << " " << lastName << " (" << email << ")" << endl;
     }
-
-    bool validateCreditCard(const CardInfo& card) const {
-        // Accept empty card info (all fields empty)
-        if (card.empty()) return true;
-        regex numberPattern(R"(^\d{16}$)");
-        regex expiryPattern(R"(^\d{2}/\d{2}$)");
-        regex cvvPattern(R"(^\d{3}$)");
-        return regex_match(card.cardNumber, numberPattern) &&
-               regex_match(card.expiryDate, expiryPattern) &&
-               regex_match(card.cvv, cvvPattern) &&
-               !isCardExpired(card.expiryDate);
-    }
-
-public:
-    void registerAccount(const string& email, const string& password,
-                        const string& address = "", const CardInfo& creditCard = CardInfo{}) {
-        if (!validateEmail(email)) {
-            throw invalid_argument("Invalid email format");
-        }
-        if (!validatePassword(password)) {
-            throw invalid_argument("Password must be at least 8 characters");
-        }
-        if (!validateCreditCard(creditCard)) {
-            throw invalid_argument("Invalid credit card format");
-        }
-
-        this->email = email;
-        this->password = password;
-        this->address = address;
-        this->creditCard = creditCard;
-    }
-
-    void setAddress(const string& address) {
-        this->address = address;
-    }
-
-    void setCreditCard(const CardInfo& creditCard) {
-        if (!validateCreditCard(creditCard)) {
-            throw invalid_argument("Invalid credit card format");
-        }
-        this->creditCard = creditCard;
-    }
-
-    string getEmail() const { return email; }
-    string getAddress() const { return address; }
-
-    string getCardHidden() const { return creditCard.cardNumber.substr(12); }
-
-    bool hasCreditCard() const { return !creditCard.empty(); }
-};
+}

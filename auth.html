@@ -467,8 +467,7 @@
 
 								<!--/* <button type="submit" class="btn-primary">Create
 									Account</button> */-->
-									<p class="error-msg" id="signupError"></p>
-									<button type="submit" class="btn-primary">Create Account</button>
+								<button type="submit" class="btn-primary">Create Account</button>
 							</form>
 
 							<div class="auth-footer">
@@ -527,8 +526,6 @@
 								<p class="error-msg" id="loginError">
 									Please enter both email and password.
 								</p>
-
-								<p class="error-msg" id="loginError"></p>
     						<button type="submit" class="btn-primary">Log In</button>
 							</form>
 
@@ -538,7 +535,7 @@
 										onclick="setMode('signup')">Create
 										an account</span>
 								</span>
-								<a href="PageTest.html">← Back to home</a>
+								<a href="order.html">← Back to home</a>
 							</div>
 						</div>
 					</div>
@@ -658,8 +655,8 @@
         error.style.display = 'block';
         error.style.color = '#ffe082';
 
-        // Send to server as JSON
-        fetch('/order', {
+		// Send to server as JSON
+		fetch('/account', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(account)
@@ -689,59 +686,73 @@
     }
 
     // ---------- Login handling ----------
-    function handleLoginSubmit(event) {
-        event.preventDefault();
+	function handleLoginSubmit(event) {
+		event.preventDefault();
 
-        const emailInput = document.getElementById('li-email');
-        const passwordInput = document.getElementById('li-password');
-        const error = document.getElementById('loginError');
+		const emailInput = document.getElementById('li-email');
+		const passwordInput = document.getElementById('li-password');
+		const error = document.getElementById('loginError');
 
-        const email = emailInput.value.trim().toLowerCase();
-        const pass = passwordInput.value;
+		const email = emailInput.value.trim().toLowerCase();
+		const pass = passwordInput.value;
 
-        error.style.display = 'none';
-        error.style.color = '#ff5252';
-        error.textContent = '';
+		error.style.display = 'none';
+		error.style.color = '#ff5252';
+		error.textContent = '';
 
-        if (!email || !pass) {
-            error.textContent = 'Please enter both email and password.';
-            error.style.display = 'block';
-            return;
-        }
+		if (!email || !pass) {
+			error.textContent = 'Please enter both email and password.';
+			error.style.display = 'block';
+			return;
+		}
 
-        // Create login object to send to server
-        const login = {
-            email,
-            password: pass
-        };
+		const loginPayload = { email, password: pass };
 
-        error.textContent = 'Logging in...';
-        error.style.color = '#ffe082';
-        error.style.display = 'block';
+		const attemptLogin = (retriesLeft) => {
+			error.textContent = 'Logging in...';
+			error.style.color = '#ffe082';
+			error.style.display = 'block';
 
-        // Send to server as JSON (same pattern as PageTest.html)
-        fetch('/order', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(login)
-        }).then(resp => resp.text()).then(text => {
-            error.textContent = 'Login successful! ' + text;
-            error.style.color = '#4caf50';
-            error.style.display = 'block';
+			fetch('/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(loginPayload)
+			}).then(async (resp) => {
+				const text = await resp.text();
+				if (!resp.ok) {
+					if (retriesLeft > 0) {
+						passwordInput.value = '';
+						passwordInput.focus();
+						setMode('login');
+						setTimeout(() => attemptLogin(retriesLeft - 1), 500);
+						return;
+					}
+					// Final failure: show error message and keep user on login form
+					error.textContent = 'Invalid email or password. Please try again.';
+					error.style.color = '#ff5252';
+					error.style.display = 'block';
+					passwordInput.value = '';
+					passwordInput.focus();
+					return;
+				}
 
-            // Store current user locally
-            setCurrentUser({email});
+				error.textContent = text;
+				error.style.color = '#4caf50';
+				error.style.display = 'block';
 
-            // Redirect to home after a short delay
-            setTimeout(() => {
-                window.location.href = 'PageTest.html';
-            }, 1500);
-        }).catch(err => {
-            error.textContent = 'Login failed: ' + err;
-            error.style.color = '#ff5252';
-            error.style.display = 'block';
-        });
-    }
+				setCurrentUser({ email });
+				setTimeout(() => {
+					window.location.href = 'order.html';
+				}, 1000);
+			}).catch(() => {
+				error.textContent = 'Network error, please try again.';
+				error.style.color = '#ff5252';
+				error.style.display = 'block';
+			});
+		};
+
+		attemptLogin(1);
+	}
 
     // ---------- Init: attach handlers & hash-based mode ----------
     document.addEventListener('DOMContentLoaded', function () {

