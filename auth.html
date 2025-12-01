@@ -665,6 +665,13 @@
             error.style.color = '#4caf50';
             error.style.display = 'block';
 
+            // Store user details in localStorage
+            setCurrentUser({ 
+                email, 
+                firstName, 
+                lastName 
+            });
+
             // Clear form
             first.value = '';
             last.value = '';
@@ -740,9 +747,10 @@
 				error.style.color = '#4caf50';
 				error.style.display = 'block';
 
+				// Store user session (email only for now; firstName/lastName would require backend to return them)
 				setCurrentUser({ email });
 				setTimeout(() => {
-					window.location.href = 'order.html';
+					window.location.href = 'MainPizzapage.html';
 				}, 1000);
 			}).catch(() => {
 				error.textContent = 'Network error, please try again.';

@@ -6,12 +6,36 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <ctime>
+#include <sstream>
 #include "Order.h"
+#include "OrderHistory.h"
 #include "AccountRegistration.h"
 #include "Login.h"
 // Add other processor headers as needed
 
 using namespace std;
+
+// URL decode helper function
+string url_decode(const string& str) {
+    string result;
+    for (size_t i = 0; i < str.length(); i++) {
+        if (str[i] == '%' && i + 2 < str.length()) {
+            int value;
+            istringstream is(str.substr(i + 1, 2));
+            if (is >> hex >> value) {
+                result += static_cast<char>(value);
+                i += 2;
+            } else {
+                result += str[i];
+            }
+        } else if (str[i] == '+') {
+            result += ' ';
+        } else {
+            result += str[i];
+        }
+    }
+    return result;
+}
 
 void send_file(int client_fd, const string& filename) {
     ifstream file(filename);
@@ -30,6 +54,7 @@ void send_file(int client_fd, const string& filename) {
 void handle_json(const string& path, const string& json_str) {
     if (path == "/order") {
         processOrder(json_str);
+        processHistory(json_str);
     } else if (path == "/account") {
         processAccount(json_str);
     } else if (path == "/login") {
@@ -55,6 +80,35 @@ void handle_client(int client_fd) {
     string body = (body_pos != string::npos) ? request.substr(body_pos + 4) : "";
 
     if (method == "GET") {
+        // Handle order history request
+        if (path.find("/orderhistory?email=") == 0) {
+            size_t email_start = path.find("=") + 1;
+            string email_encoded = path.substr(email_start);
+            string email = url_decode(email_encoded);
+            string history_file = "OrderHistory/" + email + ".txt";
+            
+            cout << "Order history request for email: " << email << endl;
+            cout << "Looking for file: " << history_file << endl;
+            
+            ifstream file(history_file);
+            if (!file) {
+                cout << "File not found: " << history_file << endl;
+                string resp = "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 0\r\n\r\n";
+                send(client_fd, resp.c_str(), resp.size(), 0);
+                close(client_fd);
+                return;
+            }
+            
+            string content((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+            cout << "Found file, content length: " << content.size() << endl;
+            string header = "HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\n";
+            header += "Content-Length: " + to_string(content.size()) + "\r\n\r\n";
+            send(client_fd, header.c_str(), header.size(), 0);
+            send(client_fd, content.c_str(), content.size(), 0);
+            close(client_fd);
+            return;
+        }
+        
         string file = "MainPizzapage.html";
         if (path != "/" && path.find("/") == 0) {
             file = path.substr(1); // Remove leading /
