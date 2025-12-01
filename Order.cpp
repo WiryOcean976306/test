@@ -138,14 +138,36 @@ void handle_client(int client_fd) {
 
     if (method == "POST" && (path == "/order" || path == "/submit")) {
         string order_json = body;
-        // Save to orders.txt with meta
+        
+        // Try to extract order info using PrettyParse
+        string customerName, street, city, state, zipcode, cardName, cardNumber, expiry, cvv;
+        try {
+            customerName = PrettyParse(order_json, "customerName");
+            street = PrettyParse(order_json, "street");
+            city = PrettyParse(order_json, "city");
+            state = PrettyParse(order_json, "state");
+            zipcode = PrettyParse(order_json, "zipcode");
+            cardName = PrettyParse(order_json, "cardName");
+            cardNumber = PrettyParse(order_json, "cardNumber");
+            expiry = PrettyParse(order_json, "expiry");
+            cvv = PrettyParse(order_json, "cvv");
+        } catch (...) {
+            // If parsing fails, continue with empty strings
+        }
+        
+        // Generate order ID and save to orders.txt with parsed details
         srand((unsigned)time(nullptr));
         string oid = generate_order_id();
         ofstream ofs("orders.txt", ios::app);
         ofs << "------------------------------\n";
         ofs << "Order ID: " << oid << "\n";
         ofs << "Date: " << now_timestamp() << "\n";
-        ofs << order_json << "\n";
+        if (!customerName.empty()) {
+            ofs << "Customer Name: " << customerName << "\n";
+            ofs << "Address: " << street << ", " << city << ", " << state << " " << zipcode << "\n";
+            ofs << "Payment: " << cardName << " (Card: " << cardNumber << ", Exp: " << expiry << ")\n";
+        }
+        ofs << "Full JSON:\n" << order_json << "\n";
         ofs << "------------------------------\n\n";
         ofs.close();
 
